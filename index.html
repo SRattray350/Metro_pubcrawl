@@ -153,9 +153,13 @@
       inset: 0;
     }
 
-    .station-marker {
+    .station-wrap {
       position: absolute;
       transform: translate(-50%, -50%);
+      z-index: 2;
+    }
+
+    .station-marker {
       min-width: 24px;
       height: 24px;
       border-radius: 999px;
@@ -175,7 +179,7 @@
 
     .station-marker:hover,
     .station-marker.active {
-      transform: translate(-50%, -50%) scale(1.08);
+      transform: scale(1.08);
       box-shadow: 0 10px 22px rgba(15, 23, 42, 0.26);
     }
 
@@ -191,7 +195,9 @@
 
     .station-label {
       position: absolute;
-      transform: translate(-50%, calc(-100% - 8px));
+      left: 50%;
+      top: -8px;
+      transform: translate(-50%, -100%);
       background: rgba(15, 23, 42, 0.9);
       color: #fff;
       font-size: 0.73rem;
@@ -378,6 +384,70 @@
       font-size: 0.92rem;
     }
 
+    .recorder-panel {
+      position: fixed;
+      right: 18px;
+      bottom: 18px;
+      width: min(360px, calc(100vw - 24px));
+      background: rgba(15, 23, 42, 0.96);
+      color: white;
+      border: 1px solid rgba(255,255,255,0.16);
+      border-radius: 16px;
+      padding: 14px;
+      box-shadow: 0 18px 40px rgba(0,0,0,0.35);
+      z-index: 40;
+    }
+
+    .recorder-panel h4 {
+      margin: 0 0 10px;
+      font-size: 1rem;
+    }
+
+    .recorder-grid {
+      display: grid;
+      gap: 8px;
+    }
+
+    .recorder-panel input,
+    .recorder-panel textarea {
+      width: 100%;
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,0.14);
+      background: rgba(255,255,255,0.06);
+      color: white;
+      padding: 10px 12px;
+      font: inherit;
+    }
+
+    .recorder-panel textarea {
+      min-height: 120px;
+      resize: vertical;
+    }
+
+    .recorder-buttons {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .recorder-small {
+      font-size: 0.88rem;
+      color: #cbd5e1;
+    }
+
+    .temp-point {
+      position: absolute;
+      width: 12px;
+      height: 12px;
+      border-radius: 999px;
+      background: #ef4444;
+      border: 2px solid white;
+      transform: translate(-50%, -50%);
+      z-index: 10;
+      pointer-events: none;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+    }
+
     @media (max-width: 1100px) {
       .layout {
         grid-template-columns: 1fr;
@@ -390,7 +460,8 @@
 
     @media (max-width: 700px) {
       .map-toolbar,
-      .stats {
+      .stats,
+      .recorder-buttons {
         grid-template-columns: 1fr;
       }
 
@@ -400,6 +471,12 @@
 
       .station-label {
         display: none;
+      }
+
+      .recorder-panel {
+        position: static;
+        width: 100%;
+        margin-top: 18px;
       }
     }
   </style>
@@ -502,6 +579,21 @@
         </section>
       </aside>
     </div>
+
+    <section class="recorder-panel">
+      <h4>Coordinate recorder</h4>
+      <div class="recorder-grid">
+        <div class="recorder-small">
+          Press <strong>n</strong> or type a station name below, then click the map to record its position.
+        </div>
+        <input id="recorderNameInput" type="text" placeholder="Station name to record" />
+        <textarea id="recorderOutput" readonly placeholder="Recorded coordinates will appear here"></textarea>
+        <div class="recorder-buttons">
+          <button id="copyCoordsBtn" type="button">Copy output</button>
+          <button id="clearCoordsBtn" type="button" class="secondary">Clear output</button>
+        </div>
+      </div>
+    </section>
   </div>
 
   <script>
@@ -560,7 +652,6 @@
       { name: "South Hylton", x: 18, y: 74 },
       { name: "Pallion", x: 25, y: 72 },
       { name: "Millfield", x: 31, y: 71 },
-      { name: "University", x: 37, y: 70 },
       { name: "Park Lane", x: 43, y: 69 },
       { name: "Sunderland", x: 47, y: 68 },
       { name: "St Peter's", x: 50, y: 63 },
@@ -568,11 +659,10 @@
       { name: "Seaburn", x: 58, y: 56 },
       { name: "East Boldon", x: 63, y: 54 },
       { name: "Brockley Whins", x: 68, y: 53 },
-      { name: "Fellgate", x: 72, y: 53 },
-      { name: "Monument", x: 62, y: 41 }
+      { name: "Fellgate", x: 72, y: 53 }
     ];
 
-    const STOPS = [...new Set(STATION_META.map(stop => stop.name))];
+    const STOPS = [...new Set(STATION_META.map(stop => stop.name))].sort((a, b) => a.localeCompare(b));
 
     const nameInput = document.getElementById("nameInput");
     const costumeInput = document.getElementById("costumeInput");
@@ -592,6 +682,11 @@
     const detailSubtitle = document.getElementById("detailSubtitle");
     const detailCount = document.getElementById("detailCount");
     const costumeList = document.getElementById("costumeList");
+
+    const recorderNameInput = document.getElementById("recorderNameInput");
+    const recorderOutput = document.getElementById("recorderOutput");
+    const copyCoordsBtn = document.getElementById("copyCoordsBtn");
+    const clearCoordsBtn = document.getElementById("clearCoordsBtn");
 
     let claims = [];
     let activeStop = null;
@@ -683,8 +778,6 @@
         wrap.dataset.stop = meta.name;
         if (q && meta.name.toLowerCase().includes(q)) wrap.classList.add("search-hit");
         if (activeStop === meta.name) wrap.classList.add("active");
-
-        wrap.style.position = "absolute";
         wrap.style.left = `${meta.x}%`;
         wrap.style.top = `${meta.y}%`;
 
@@ -698,7 +791,10 @@
         button.textContent = String(count);
         button.setAttribute("aria-label", `${meta.name}: ${count} costume claims`);
         button.title = `${meta.name} (${count})`;
-        button.addEventListener("click", () => renderDetail(meta.name));
+        button.addEventListener("click", (e) => {
+          e.stopPropagation();
+          renderDetail(meta.name);
+        });
 
         wrap.appendChild(label);
         wrap.appendChild(button);
@@ -735,7 +831,6 @@
       renderMap();
       renderQuickList();
       renderStats();
-      if (activeStop && !STOPS.includes(activeStop)) activeStop = null;
       renderDetail(activeStop);
     }
 
@@ -846,6 +941,64 @@
         setStatus("Something went wrong while moving the entry.", true);
       }
     }
+
+    function addRecordedCoordinate(stationName, x, y) {
+      const line = `{ name: "${stationName}", x: ${x}, y: ${y} },`;
+      console.log(line);
+
+      recorderOutput.value += (recorderOutput.value ? "\n" : "") + line;
+      recorderOutput.scrollTop = recorderOutput.scrollHeight;
+
+      const point = document.createElement("div");
+      point.className = "temp-point";
+      point.style.left = `${x}%`;
+      point.style.top = `${y}%`;
+      point.title = `${stationName}: ${x}, ${y}`;
+      mapOverlay.appendChild(point);
+    }
+
+    function handleCoordinateRecord(event) {
+      const target = event.target;
+      if (target.closest(".station-marker")) return;
+
+      const stationName = recorderNameInput.value.trim();
+      if (!stationName) return;
+
+      const rect = mapOverlay.getBoundingClientRect();
+      const x = Number((((event.clientX - rect.left) / rect.width) * 100).toFixed(2));
+      const y = Number((((event.clientY - rect.top) / rect.height) * 100).toFixed(2));
+
+      addRecordedCoordinate(stationName, x, y);
+    }
+
+    copyCoordsBtn.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(recorderOutput.value);
+        copyCoordsBtn.textContent = "Copied";
+        setTimeout(() => {
+          copyCoordsBtn.textContent = "Copy output";
+        }, 1200);
+      } catch (err) {
+        console.error(err);
+      }
+    });
+
+    clearCoordsBtn.addEventListener("click", () => {
+      recorderOutput.value = "";
+      document.querySelectorAll(".temp-point").forEach(point => point.remove());
+    });
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key.toLowerCase() === "n") {
+        const current = recorderNameInput.value.trim();
+        const nextName = prompt("Enter station name for next click:", current);
+        if (nextName !== null) {
+          recorderNameInput.value = nextName.trim();
+        }
+      }
+    });
+
+    mapOverlay.addEventListener("click", handleCoordinateRecord);
 
     const savedName = localStorage.getItem("metro-costume-name");
     const savedPasscode = localStorage.getItem("metro-costume-passcode");
