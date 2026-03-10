@@ -8,11 +8,9 @@
     :root {
       --bg: #0f172a;
       --panel: #111827;
-      --panel-2: #1f2937;
       --text: #f8fafc;
       --muted: #cbd5e1;
       --accent: #22c55e;
-      --accent-2: #f59e0b;
       --danger: #ef4444;
       --border: rgba(255,255,255,0.12);
       --shadow: 0 16px 40px rgba(0,0,0,0.25);
@@ -56,7 +54,7 @@
       margin: 0;
       color: var(--muted);
       font-size: 1.05rem;
-      max-width: 70ch;
+      max-width: 72ch;
     }
 
     .notice {
@@ -136,7 +134,6 @@
     }
 
     button:hover { transform: translateY(-1px); }
-    button:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
 
     .secondary {
       margin-top: 10px;
@@ -212,7 +209,7 @@
 
     .stop-list {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
       gap: 10px;
       max-height: 820px;
       overflow: auto;
@@ -257,16 +254,16 @@
       word-break: break-word;
     }
 
+    .claimed-by div {
+      margin-top: 6px;
+      padding-top: 6px;
+      border-top: 1px solid rgba(255,255,255,0.08);
+    }
+
     .footer-note {
       margin-top: 16px;
       color: var(--muted);
       font-size: 0.92rem;
-    }
-
-    code.inline {
-      background: rgba(255,255,255,0.08);
-      padding: 2px 6px;
-      border-radius: 8px;
     }
 
     @media (max-width: 960px) {
@@ -299,10 +296,10 @@
     <section class="hero">
       <h1>Dress as a Newcastle Metro Stop</h1>
       <p class="subtitle">
-        Pick your station before someone else nabs it. One person per Metro stop, synced through a Google Sheet.
+        Multiple people can choose the same Metro stop, but everyone has to write their costume idea so other people can see what is already being planned.
       </p>
       <div class="notice">
-        Click a station card to auto-select it, then claim it with your name and passcode.
+        Click a station card to auto-select it, then add your name, costume idea, and passcode.
       </div>
     </section>
 
@@ -317,7 +314,7 @@
           />
         </div>
         <p class="tiny">
-          You can later replace this with a local image in your repo if you want the page to be fully self-contained.
+          You can replace this later with a local image in your repo if you want.
         </p>
       </section>
 
@@ -327,8 +324,11 @@
         <label for="nameInput">Your name</label>
         <input id="nameInput" type="text" maxlength="40" placeholder="e.g. Sam" />
 
+        <label for="costumeInput">Your costume idea</label>
+        <input id="costumeInput" type="text" maxlength="80" placeholder="e.g. giant yellow M, ticket machine, platform sign, tunnel" />
+
         <label for="passcodeInput">Passcode</label>
-        <input id="passcodeInput" type="password" maxlength="40" placeholder="Use a passcode so only you can release or move your stop" />
+        <input id="passcodeInput" type="password" maxlength="40" placeholder="Use a passcode so only you can release or move your entry" />
 
         <div class="row">
           <div>
@@ -341,20 +341,20 @@
           </div>
         </div>
 
-        <button id="claimBtn">Claim this stop</button>
-        <button id="releaseBtn" class="secondary">Release my stop</button>
-        <button id="changeBtn" class="danger">Move my claim to selected stop</button>
+        <button id="claimBtn">Add my costume</button>
+        <button id="releaseBtn" class="secondary">Remove my entry</button>
+        <button id="changeBtn" class="danger">Move my entry to selected stop</button>
 
         <div id="status" class="status"></div>
 
         <div class="stats">
           <div class="stat">
             <strong id="claimedCount">0</strong>
-            claimed
+            costumes added
           </div>
           <div class="stat">
             <strong id="freeCount">0</strong>
-            free
+            stops with nobody yet
           </div>
           <div class="stat">
             <strong id="totalCount">0</strong>
@@ -363,7 +363,7 @@
         </div>
 
         <p class="footer-note">
-          Your name and passcode are saved in your browser on your device, so it is easier to edit your claim later.
+          Your name and passcode are saved in your browser on your device. Your costume idea is shown to everyone.
         </p>
       </section>
     </div>
@@ -371,15 +371,15 @@
     <section class="panel" style="margin-top: 20px;">
       <h3>All stations</h3>
       <div class="legend">
-        <span><i class="dot available"></i> available</span>
-        <span><i class="dot claimed"></i> claimed</span>
+        <span><i class="dot available"></i> no costumes yet</span>
+        <span><i class="dot claimed"></i> has costumes</span>
       </div>
       <div id="stopList" class="stop-list"></div>
     </section>
   </div>
 
   <script>
-    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxsH27YEQN07y0gkzOx0CaO-8BIJes2itpnIF0q36pFB3uUkwvZjF0OKP_NFDhdX6a3KA/exec";
+    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyX28NJ0ocdBR2xbvSSwHPsYEUlUK5x_ruzUP8hTIjf0Q3Lulz443Lz4DVgeuQI7uZQag/exec";
 
     const STOPS = [
       "Airport", "Bank Foot", "Bede", "Benton", "Brockley Whins", "Byker", "Callerton Parkway", "Central Station",
@@ -393,6 +393,7 @@
     ];
 
     const nameInput = document.getElementById("nameInput");
+    const costumeInput = document.getElementById("costumeInput");
     const passcodeInput = document.getElementById("passcodeInput");
     const stopSelect = document.getElementById("stopSelect");
     const searchInput = document.getElementById("searchInput");
@@ -424,6 +425,7 @@
     function getFormData() {
       return {
         name: nameInput.value.trim(),
+        costume: costumeInput.value.trim(),
         passcode: passcodeInput.value.trim(),
         stop: stopSelect.value
       };
@@ -470,10 +472,10 @@
     }
 
     async function claimSelectedStop() {
-      const { name, passcode, stop } = getFormData();
+      const { name, costume, passcode, stop } = getFormData();
 
-      if (!name || !passcode || !stop) {
-        setStatus("Enter your name, a passcode, and pick a stop.", true);
+      if (!name || !costume || !passcode || !stop) {
+        setStatus("Enter your name, costume idea, passcode, and pick a stop.", true);
         return;
       }
 
@@ -481,22 +483,25 @@
         const result = await apiPost({
           action: "claimStop",
           name,
+          costume,
           passcode,
           stop
         });
 
         if (!result.ok) {
-          setStatus(result.error || "Could not claim stop.", true);
+          setStatus(result.error || "Could not add costume.", true);
           return;
         }
 
         localStorage.setItem("metro-costume-name", name);
         localStorage.setItem("metro-costume-passcode", passcode);
-        setStatus(result.message || `${stop} claimed successfully.`);
+        localStorage.setItem("metro-costume-idea", costume);
+
+        setStatus(result.message || `${stop} added successfully.`);
         await loadClaims();
       } catch (err) {
         console.error(err);
-        setStatus("Something went wrong while claiming the stop.", true);
+        setStatus("Something went wrong while adding the costume.", true);
       }
     }
 
@@ -504,7 +509,7 @@
       const { name, passcode } = getFormData();
 
       if (!name || !passcode) {
-        setStatus("Enter your name and passcode to release your stop.", true);
+        setStatus("Enter your name and passcode to remove your entry.", true);
         return;
       }
 
@@ -516,23 +521,23 @@
         });
 
         if (!result.ok) {
-          setStatus(result.error || "Could not release stop.", true);
+          setStatus(result.error || "Could not remove entry.", true);
           return;
         }
 
-        setStatus(result.message || "Stop released.");
+        setStatus(result.message || "Entry removed.");
         await loadClaims();
       } catch (err) {
         console.error(err);
-        setStatus("Something went wrong while releasing the stop.", true);
+        setStatus("Something went wrong while removing the entry.", true);
       }
     }
 
     async function moveMyClaim() {
-      const { name, passcode, stop } = getFormData();
+      const { name, costume, passcode, stop } = getFormData();
 
-      if (!name || !passcode || !stop) {
-        setStatus("Enter your name, passcode, and new stop.", true);
+      if (!name || !costume || !passcode || !stop) {
+        setStatus("Enter your name, costume idea, passcode, and new stop.", true);
         return;
       }
 
@@ -540,20 +545,25 @@
         const result = await apiPost({
           action: "moveClaim",
           name,
+          costume,
           passcode,
           stop
         });
 
         if (!result.ok) {
-          setStatus(result.error || "Could not move claim.", true);
+          setStatus(result.error || "Could not move entry.", true);
           return;
         }
 
-        setStatus(result.message || `Moved claim to ${stop}.`);
+        localStorage.setItem("metro-costume-name", name);
+        localStorage.setItem("metro-costume-passcode", passcode);
+        localStorage.setItem("metro-costume-idea", costume);
+
+        setStatus(result.message || `Moved entry to ${stop}.`);
         await loadClaims();
       } catch (err) {
         console.error(err);
-        setStatus("Something went wrong while moving the claim.", true);
+        setStatus("Something went wrong while moving the entry.", true);
       }
     }
 
@@ -562,24 +572,28 @@
       stopList.innerHTML = "";
 
       const filteredStops = STOPS.filter(stop => stop.toLowerCase().includes(q));
-      const claimedStops = new Set(claims.map(c => c.stop));
+      const stopsWithClaims = new Set(claims.map(c => c.stop));
 
       for (const stop of filteredStops) {
-        const claim = claims.find(c => c.stop === stop);
+        const stopClaims = claims.filter(c => c.stop === stop);
         const card = document.createElement("div");
         card.className = "stop-card";
 
-        card.innerHTML = claim
-          ? `
-            <div class="tag claimed">Claimed</div>
+        if (stopClaims.length > 0) {
+          card.innerHTML = `
+            <div class="tag claimed">${stopClaims.length} costume${stopClaims.length === 1 ? "" : "s"}</div>
             <h4>${escapeHtml(stop)}</h4>
-            <div class="claimed-by">Claimed by <strong>${escapeHtml(claim.name)}</strong></div>
-          `
-          : `
-            <div class="tag available">Available</div>
-            <h4>${escapeHtml(stop)}</h4>
-            <div class="claimed-by">Still free for the taking</div>
+            <div class="claimed-by">
+              ${stopClaims.map(c => `<div><strong>${escapeHtml(c.name)}</strong>: ${escapeHtml(c.costume || "No costume added")}</div>`).join("")}
+            </div>
           `;
+        } else {
+          card.innerHTML = `
+            <div class="tag available">No costumes yet</div>
+            <h4>${escapeHtml(stop)}</h4>
+            <div class="claimed-by">Be the first to add one</div>
+          `;
+        }
 
         card.addEventListener("click", () => {
           stopSelect.value = stop;
@@ -589,14 +603,17 @@
         stopList.appendChild(card);
       }
 
-      claimedCount.textContent = claimedStops.size;
-      freeCount.textContent = STOPS.length - claimedStops.size;
+      claimedCount.textContent = claims.length;
+      freeCount.textContent = STOPS.length - stopsWithClaims.size;
     }
 
     const savedName = localStorage.getItem("metro-costume-name");
     const savedPasscode = localStorage.getItem("metro-costume-passcode");
+    const savedCostume = localStorage.getItem("metro-costume-idea");
+
     if (savedName) nameInput.value = savedName;
     if (savedPasscode) passcodeInput.value = savedPasscode;
+    if (savedCostume) costumeInput.value = savedCostume;
 
     claimBtn.addEventListener("click", claimSelectedStop);
     releaseBtn.addEventListener("click", releaseMyStop);
