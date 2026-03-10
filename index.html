@@ -224,6 +224,7 @@
       border-radius: 14px;
       padding: 12px;
       background: rgba(255,255,255,0.04);
+      cursor: pointer;
     }
 
     .stop-card h4 {
@@ -298,11 +299,10 @@
     <section class="hero">
       <h1>Dress as a Newcastle Metro Stop</h1>
       <p class="subtitle">
-        Pick your station before someone else nabs it. One person per Metro stop, live for everyone viewing the page.
+        Pick your station before someone else nabs it. One person per Metro stop, synced through a Google Sheet.
       </p>
       <div class="notice">
-        This page is built for GitHub Pages, but the shared claiming feature needs a tiny database behind it.
-        This version uses <strong>Firebase Realtime Database</strong> so everyone sees the same claimed stops in real time.
+        Click a station card to auto-select it, then claim it with your name and passcode.
       </div>
     </section>
 
@@ -317,7 +317,7 @@
           />
         </div>
         <p class="tiny">
-          Current Metro map image from Nexus. If you want to avoid depending on an external image URL, save the map into your repo and change the <code class="inline">src</code> to a local file.
+          You can later replace this with a local image in your repo if you want the page to be fully self-contained.
         </p>
       </section>
 
@@ -328,7 +328,7 @@
         <input id="nameInput" type="text" maxlength="40" placeholder="e.g. Sam" />
 
         <label for="passcodeInput">Passcode</label>
-        <input id="passcodeInput" type="password" maxlength="40" placeholder="Make up a passcode so only you can release or change your stop" />
+        <input id="passcodeInput" type="password" maxlength="40" placeholder="Use a passcode so only you can release or move your stop" />
 
         <div class="row">
           <div>
@@ -363,7 +363,7 @@
         </div>
 
         <p class="footer-note">
-          Tip: use your actual name so people know what costume is taken. The passcode is only there to stop your mates "accidentally" stealing your stop.
+          Your name and passcode are saved in your browser on your device, so it is easier to edit your claim later.
         </p>
       </section>
     </div>
@@ -378,30 +378,8 @@
     </section>
   </div>
 
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
-    import {
-      getDatabase,
-      ref,
-      onValue,
-      get,
-      set,
-      remove,
-      serverTimestamp
-    } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-database.js";
-
-    // 1) Replace this object with your own Firebase config.
-    // 2) In Firebase Realtime Database rules, start with test mode while setting up,
-    //    then lock it down once you've confirmed everything works.
-    const firebaseConfig = {
-      apiKey: "PASTE_YOUR_API_KEY",
-      authDomain: "PASTE_YOUR_PROJECT.firebaseapp.com",
-      databaseURL: "https://PASTE_YOUR_PROJECT-default-rtdb.firebaseio.com",
-      projectId: "PASTE_YOUR_PROJECT",
-      storageBucket: "PASTE_YOUR_PROJECT.firebasestorage.app",
-      messagingSenderId: "PASTE_YOUR_SENDER_ID",
-      appId: "PASTE_YOUR_APP_ID"
-    };
+  <script>
+    const APPS_SCRIPT_URL = "PASTE_YOUR_WEB_APP_URL_HERE";
 
     const STOPS = [
       "Airport", "Bank Foot", "Bede", "Benton", "Brockley Whins", "Byker", "Callerton Parkway", "Central Station",
@@ -427,6 +405,8 @@
     const freeCount = document.getElementById("freeCount");
     const totalCount = document.getElementById("totalCount");
 
+    let claims = [];
+
     totalCount.textContent = STOPS.length;
 
     for (const stop of STOPS) {
@@ -434,20 +414,6 @@
       option.value = stop;
       option.textContent = stop;
       stopSelect.appendChild(option);
-    }
-
-    const app = initializeApp(firebaseConfig);
-    const db = getDatabase(app);
-    const claimsRef = ref(db, "metro-costume-claims");
-
-    let claims = {};
-
-    function slugify(text) {
-      return text
-        .toLowerCase()
-        .replace(/'/g, "")
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/^-+|-+$/g, "");
     }
 
     function setStatus(message, isError = false) {
@@ -463,96 +429,132 @@
       };
     }
 
-    function findClaimByOwner(name, passcode) {
-      return Object.entries(claims).find(([, value]) => {
-        return value?.name?.toLowerCase() === name.toLowerCase() && value?.passcode === passcode;
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    async function apiGetClaims() {
+      const response = await fetch(`${APPS_SCRIPT_URL}?action=getClaims`);
+      return await response.json();
+    }
+
+    async function apiPost(data) {
+      const response = await fetch(APPS_SCRIPT_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "text/plain;charset=utf-8"
+        },
+        body: JSON.stringify(data)
       });
+      return await response.json();
+    }
+
+    async function loadClaims() {
+      try {
+        const result = await apiGetClaims();
+        if (!result.ok) {
+          setStatus(result.error || "Could not load claims.", true);
+          return;
+        }
+        claims = result.claims || [];
+        renderStops(searchInput.value);
+      } catch (err) {
+        console.error(err);
+        setStatus("Could not connect to the claims sheet.", true);
+      }
     }
 
     async function claimSelectedStop() {
       const { name, passcode, stop } = getFormData();
+
       if (!name || !passcode || !stop) {
         setStatus("Enter your name, a passcode, and pick a stop.", true);
         return;
       }
 
-      const stopKey = slugify(stop);
-      const stopRef = ref(db, `metro-costume-claims/${stopKey}`);
-      const existingSnap = await get(stopRef);
+      try {
+        const result = await apiPost({
+          action: "claimStop",
+          name,
+          passcode,
+          stop
+        });
 
-      if (existingSnap.exists()) {
-        setStatus(`${stop} has already been claimed by ${existingSnap.val().name}.`, true);
-        return;
+        if (!result.ok) {
+          setStatus(result.error || "Could not claim stop.", true);
+          return;
+        }
+
+        localStorage.setItem("metro-costume-name", name);
+        localStorage.setItem("metro-costume-passcode", passcode);
+        setStatus(result.message || `${stop} claimed successfully.`);
+        await loadClaims();
+      } catch (err) {
+        console.error(err);
+        setStatus("Something went wrong while claiming the stop.", true);
       }
-
-      const ownerClaim = findClaimByOwner(name, passcode);
-      if (ownerClaim) {
-        setStatus(`You already have ${ownerClaim[1].stop}. Use “Move my claim” instead.`, true);
-        return;
-      }
-
-      await set(stopRef, {
-        stop,
-        name,
-        passcode,
-        claimedAt: Date.now(),
-        serverTime: serverTimestamp()
-      });
-
-      localStorage.setItem("metro-costume-name", name);
-      localStorage.setItem("metro-costume-passcode", passcode);
-      setStatus(`Nice. ${stop} is now yours.`);
     }
 
     async function releaseMyStop() {
       const { name, passcode } = getFormData();
+
       if (!name || !passcode) {
         setStatus("Enter your name and passcode to release your stop.", true);
         return;
       }
 
-      const ownerClaim = findClaimByOwner(name, passcode);
-      if (!ownerClaim) {
-        setStatus("No claim matched that name and passcode.", true);
-        return;
-      }
+      try {
+        const result = await apiPost({
+          action: "releaseStop",
+          name,
+          passcode
+        });
 
-      const [key, value] = ownerClaim;
-      await remove(ref(db, `metro-costume-claims/${key}`));
-      setStatus(`Released ${value.stop}.`);
+        if (!result.ok) {
+          setStatus(result.error || "Could not release stop.", true);
+          return;
+        }
+
+        setStatus(result.message || "Stop released.");
+        await loadClaims();
+      } catch (err) {
+        console.error(err);
+        setStatus("Something went wrong while releasing the stop.", true);
+      }
     }
 
     async function moveMyClaim() {
       const { name, passcode, stop } = getFormData();
+
       if (!name || !passcode || !stop) {
-        setStatus("Enter your name, passcode, and target stop.", true);
+        setStatus("Enter your name, passcode, and new stop.", true);
         return;
       }
 
-      const targetKey = slugify(stop);
-      const targetSnap = await get(ref(db, `metro-costume-claims/${targetKey}`));
-      if (targetSnap.exists()) {
-        setStatus(`${stop} is already taken by ${targetSnap.val().name}.`, true);
-        return;
+      try {
+        const result = await apiPost({
+          action: "moveClaim",
+          name,
+          passcode,
+          stop
+        });
+
+        if (!result.ok) {
+          setStatus(result.error || "Could not move claim.", true);
+          return;
+        }
+
+        setStatus(result.message || `Moved claim to ${stop}.`);
+        await loadClaims();
+      } catch (err) {
+        console.error(err);
+        setStatus("Something went wrong while moving the claim.", true);
       }
-
-      const ownerClaim = findClaimByOwner(name, passcode);
-      if (!ownerClaim) {
-        setStatus("No existing claim matched that name and passcode.", true);
-        return;
-      }
-
-      const [oldKey] = ownerClaim;
-      await remove(ref(db, `metro-costume-claims/${oldKey}`));
-      await set(ref(db, `metro-costume-claims/${targetKey}`), {
-        stop,
-        name,
-        passcode,
-        claimedAt: Date.now(),
-        serverTime: serverTimestamp()
-      });
-
-      setStatus(`Moved your claim to ${stop}.`);
     }
 
     function renderStops(filterText = "") {
@@ -560,22 +562,22 @@
       stopList.innerHTML = "";
 
       const filteredStops = STOPS.filter(stop => stop.toLowerCase().includes(q));
-      const claimedStops = new Set(Object.values(claims).map(v => v.stop));
+      const claimedStops = new Set(claims.map(c => c.stop));
 
       for (const stop of filteredStops) {
-        const claim = Object.values(claims).find(v => v.stop === stop);
+        const claim = claims.find(c => c.stop === stop);
         const card = document.createElement("div");
         card.className = "stop-card";
 
         card.innerHTML = claim
           ? `
             <div class="tag claimed">Claimed</div>
-            <h4>${stop}</h4>
+            <h4>${escapeHtml(stop)}</h4>
             <div class="claimed-by">Claimed by <strong>${escapeHtml(claim.name)}</strong></div>
           `
           : `
             <div class="tag available">Available</div>
-            <h4>${stop}</h4>
+            <h4>${escapeHtml(stop)}</h4>
             <div class="claimed-by">Still free for the taking</div>
           `;
 
@@ -591,20 +593,6 @@
       freeCount.textContent = STOPS.length - claimedStops.size;
     }
 
-    function escapeHtml(value) {
-      return String(value)
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;")
-        .replaceAll("'", "&#039;");
-    }
-
-    onValue(claimsRef, (snapshot) => {
-      claims = snapshot.val() || {};
-      renderStops(searchInput.value);
-    });
-
     const savedName = localStorage.getItem("metro-costume-name");
     const savedPasscode = localStorage.getItem("metro-costume-passcode");
     if (savedName) nameInput.value = savedName;
@@ -615,7 +603,8 @@
     changeBtn.addEventListener("click", moveMyClaim);
     searchInput.addEventListener("input", () => renderStops(searchInput.value));
 
-    renderStops();
+    loadClaims();
+    setInterval(loadClaims, 10000);
   </script>
 </body>
 </html>
