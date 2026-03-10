@@ -1,0 +1,621 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Newcastle Metro Stop Costume Picker</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --panel: #111827;
+      --panel-2: #1f2937;
+      --text: #f8fafc;
+      --muted: #cbd5e1;
+      --accent: #22c55e;
+      --accent-2: #f59e0b;
+      --danger: #ef4444;
+      --border: rgba(255,255,255,0.12);
+      --shadow: 0 16px 40px rgba(0,0,0,0.25);
+      --radius: 18px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(34,197,94,0.15), transparent 30%),
+        radial-gradient(circle at top right, rgba(245,158,11,0.12), transparent 35%),
+        var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
+
+    .wrap {
+      width: min(1200px, calc(100% - 32px));
+      margin: 24px auto 48px;
+    }
+
+    .hero {
+      background: linear-gradient(135deg, rgba(34,197,94,0.18), rgba(245,158,11,0.12));
+      border: 1px solid var(--border);
+      border-radius: 28px;
+      padding: 28px;
+      box-shadow: var(--shadow);
+      margin-bottom: 20px;
+    }
+
+    h1 {
+      margin: 0 0 10px;
+      font-size: clamp(2rem, 4vw, 3.2rem);
+      line-height: 1.05;
+    }
+
+    .subtitle {
+      margin: 0;
+      color: var(--muted);
+      font-size: 1.05rem;
+      max-width: 70ch;
+    }
+
+    .notice {
+      margin-top: 16px;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px 16px;
+      color: #e2e8f0;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1.15fr 0.85fr;
+      gap: 20px;
+      align-items: start;
+    }
+
+    .panel {
+      background: rgba(17, 24, 39, 0.92);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      box-shadow: var(--shadow);
+    }
+
+    .panel h2, .panel h3 {
+      margin-top: 0;
+    }
+
+    .map-frame {
+      overflow: hidden;
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      background: #fff;
+    }
+
+    .map-frame img {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+
+    .tiny {
+      color: var(--muted);
+      font-size: 0.92rem;
+      margin-top: 10px;
+    }
+
+    label {
+      display: block;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    input, select, button {
+      width: 100%;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      padding: 12px 14px;
+      font: inherit;
+    }
+
+    input, select {
+      background: rgba(255,255,255,0.06);
+      color: var(--text);
+      margin-bottom: 14px;
+    }
+
+    button {
+      cursor: pointer;
+      background: linear-gradient(135deg, var(--accent), #16a34a);
+      color: white;
+      border: none;
+      font-weight: 800;
+      transition: transform 0.12s ease, opacity 0.12s ease;
+    }
+
+    button:hover { transform: translateY(-1px); }
+    button:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
+
+    .secondary {
+      margin-top: 10px;
+      background: linear-gradient(135deg, #334155, #475569);
+    }
+
+    .danger {
+      margin-top: 10px;
+      background: linear-gradient(135deg, #dc2626, #b91c1c);
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .status {
+      margin-top: 12px;
+      min-height: 24px;
+      font-size: 0.96rem;
+      color: #dbeafe;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin: 18px 0 8px;
+    }
+
+    .stat {
+      background: rgba(255,255,255,0.06);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 12px;
+      text-align: center;
+    }
+
+    .stat strong {
+      display: block;
+      font-size: 1.4rem;
+    }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 14px;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    .legend span {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 999px;
+      display: inline-block;
+    }
+
+    .available { background: #22c55e; }
+    .claimed { background: #f59e0b; }
+
+    .search {
+      margin-bottom: 14px;
+    }
+
+    .stop-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 10px;
+      max-height: 820px;
+      overflow: auto;
+      padding-right: 4px;
+    }
+
+    .stop-card {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 12px;
+      background: rgba(255,255,255,0.04);
+    }
+
+    .stop-card h4 {
+      margin: 0 0 6px;
+      font-size: 1rem;
+    }
+
+    .tag {
+      display: inline-block;
+      border-radius: 999px;
+      padding: 4px 9px;
+      font-size: 0.8rem;
+      font-weight: 800;
+      margin-bottom: 8px;
+    }
+
+    .tag.available {
+      color: #052e16;
+      background: #86efac;
+    }
+
+    .tag.claimed {
+      color: #451a03;
+      background: #fcd34d;
+    }
+
+    .claimed-by {
+      color: var(--muted);
+      font-size: 0.93rem;
+      word-break: break-word;
+    }
+
+    .footer-note {
+      margin-top: 16px;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    code.inline {
+      background: rgba(255,255,255,0.08);
+      padding: 2px 6px;
+      border-radius: 8px;
+    }
+
+    @media (max-width: 960px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+
+      .stop-list {
+        max-height: none;
+      }
+    }
+
+    @media (max-width: 560px) {
+      .row, .stats {
+        grid-template-columns: 1fr;
+      }
+
+      .wrap {
+        width: min(100% - 18px, 1200px);
+      }
+
+      .hero, .panel {
+        padding: 16px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="hero">
+      <h1>Dress as a Newcastle Metro Stop</h1>
+      <p class="subtitle">
+        Pick your station before someone else nabs it. One person per Metro stop, live for everyone viewing the page.
+      </p>
+      <div class="notice">
+        This page is built for GitHub Pages, but the shared claiming feature needs a tiny database behind it.
+        This version uses <strong>Firebase Realtime Database</strong> so everyone sees the same claimed stops in real time.
+      </div>
+    </section>
+
+    <div class="grid">
+      <section class="panel">
+        <h2>Metro map</h2>
+        <div class="map-frame">
+          <img
+            src="https://www.nexus.org.uk/themes/custom/nexus/images/metro-map-large.jpg"
+            alt="Tyne and Wear Metro map"
+            loading="lazy"
+          />
+        </div>
+        <p class="tiny">
+          Current Metro map image from Nexus. If you want to avoid depending on an external image URL, save the map into your repo and change the <code class="inline">src</code> to a local file.
+        </p>
+      </section>
+
+      <section class="panel">
+        <h2>Claim a stop</h2>
+
+        <label for="nameInput">Your name</label>
+        <input id="nameInput" type="text" maxlength="40" placeholder="e.g. Sam" />
+
+        <label for="passcodeInput">Passcode</label>
+        <input id="passcodeInput" type="password" maxlength="40" placeholder="Make up a passcode so only you can release or change your stop" />
+
+        <div class="row">
+          <div>
+            <label for="stopSelect">Metro stop</label>
+            <select id="stopSelect"></select>
+          </div>
+          <div>
+            <label for="searchInput">Search stops</label>
+            <input id="searchInput" class="search" type="text" placeholder="Search a stop name" />
+          </div>
+        </div>
+
+        <button id="claimBtn">Claim this stop</button>
+        <button id="releaseBtn" class="secondary">Release my stop</button>
+        <button id="changeBtn" class="danger">Move my claim to selected stop</button>
+
+        <div id="status" class="status"></div>
+
+        <div class="stats">
+          <div class="stat">
+            <strong id="claimedCount">0</strong>
+            claimed
+          </div>
+          <div class="stat">
+            <strong id="freeCount">0</strong>
+            free
+          </div>
+          <div class="stat">
+            <strong id="totalCount">0</strong>
+            total stops
+          </div>
+        </div>
+
+        <p class="footer-note">
+          Tip: use your actual name so people know what costume is taken. The passcode is only there to stop your mates "accidentally" stealing your stop.
+        </p>
+      </section>
+    </div>
+
+    <section class="panel" style="margin-top: 20px;">
+      <h3>All stations</h3>
+      <div class="legend">
+        <span><i class="dot available"></i> available</span>
+        <span><i class="dot claimed"></i> claimed</span>
+      </div>
+      <div id="stopList" class="stop-list"></div>
+    </section>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
+    import {
+      getDatabase,
+      ref,
+      onValue,
+      get,
+      set,
+      remove,
+      serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-database.js";
+
+    // 1) Replace this object with your own Firebase config.
+    // 2) In Firebase Realtime Database rules, start with test mode while setting up,
+    //    then lock it down once you've confirmed everything works.
+    const firebaseConfig = {
+      apiKey: "PASTE_YOUR_API_KEY",
+      authDomain: "PASTE_YOUR_PROJECT.firebaseapp.com",
+      databaseURL: "https://PASTE_YOUR_PROJECT-default-rtdb.firebaseio.com",
+      projectId: "PASTE_YOUR_PROJECT",
+      storageBucket: "PASTE_YOUR_PROJECT.firebasestorage.app",
+      messagingSenderId: "PASTE_YOUR_SENDER_ID",
+      appId: "PASTE_YOUR_APP_ID"
+    };
+
+    const STOPS = [
+      "Airport", "Bank Foot", "Bede", "Benton", "Brockley Whins", "Byker", "Callerton Parkway", "Central Station",
+      "Chichester", "Chillingham Road", "Cullercoats", "East Boldon", "Fawdon", "Fellgate", "Felling", "Four Lane Ends",
+      "Gateshead", "Gateshead Stadium", "Hadrian Road", "Haymarket", "Hebburn", "Heworth", "Howdon", "Ilford Road",
+      "Jarrow", "Jesmond", "Kingston Park", "Longbenton", "Manors", "Meadow Well", "Millfield", "Monkseaton",
+      "Monument", "North Shields", "Northumberland Park", "Pallion", "Palmersville", "Park Lane", "Pelaw", "Percy Main",
+      "Regent Centre", "Seaburn", "Shiremoor", "Simonside", "South Gosforth", "South Hylton", "South Shields", "St James",
+      "St Peter's", "Stadium of Light", "Sunderland", "Tyne Dock", "Tynemouth", "University", "Walkergate", "Wallsend",
+      "Wansbeck Road", "West Jesmond", "West Monkseaton", "Whitley Bay"
+    ];
+
+    const nameInput = document.getElementById("nameInput");
+    const passcodeInput = document.getElementById("passcodeInput");
+    const stopSelect = document.getElementById("stopSelect");
+    const searchInput = document.getElementById("searchInput");
+    const claimBtn = document.getElementById("claimBtn");
+    const releaseBtn = document.getElementById("releaseBtn");
+    const changeBtn = document.getElementById("changeBtn");
+    const statusEl = document.getElementById("status");
+    const stopList = document.getElementById("stopList");
+    const claimedCount = document.getElementById("claimedCount");
+    const freeCount = document.getElementById("freeCount");
+    const totalCount = document.getElementById("totalCount");
+
+    totalCount.textContent = STOPS.length;
+
+    for (const stop of STOPS) {
+      const option = document.createElement("option");
+      option.value = stop;
+      option.textContent = stop;
+      stopSelect.appendChild(option);
+    }
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+    const claimsRef = ref(db, "metro-costume-claims");
+
+    let claims = {};
+
+    function slugify(text) {
+      return text
+        .toLowerCase()
+        .replace(/'/g, "")
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "");
+    }
+
+    function setStatus(message, isError = false) {
+      statusEl.textContent = message;
+      statusEl.style.color = isError ? "#fecaca" : "#dbeafe";
+    }
+
+    function getFormData() {
+      return {
+        name: nameInput.value.trim(),
+        passcode: passcodeInput.value.trim(),
+        stop: stopSelect.value
+      };
+    }
+
+    function findClaimByOwner(name, passcode) {
+      return Object.entries(claims).find(([, value]) => {
+        return value?.name?.toLowerCase() === name.toLowerCase() && value?.passcode === passcode;
+      });
+    }
+
+    async function claimSelectedStop() {
+      const { name, passcode, stop } = getFormData();
+      if (!name || !passcode || !stop) {
+        setStatus("Enter your name, a passcode, and pick a stop.", true);
+        return;
+      }
+
+      const stopKey = slugify(stop);
+      const stopRef = ref(db, `metro-costume-claims/${stopKey}`);
+      const existingSnap = await get(stopRef);
+
+      if (existingSnap.exists()) {
+        setStatus(`${stop} has already been claimed by ${existingSnap.val().name}.`, true);
+        return;
+      }
+
+      const ownerClaim = findClaimByOwner(name, passcode);
+      if (ownerClaim) {
+        setStatus(`You already have ${ownerClaim[1].stop}. Use “Move my claim” instead.`, true);
+        return;
+      }
+
+      await set(stopRef, {
+        stop,
+        name,
+        passcode,
+        claimedAt: Date.now(),
+        serverTime: serverTimestamp()
+      });
+
+      localStorage.setItem("metro-costume-name", name);
+      localStorage.setItem("metro-costume-passcode", passcode);
+      setStatus(`Nice. ${stop} is now yours.`);
+    }
+
+    async function releaseMyStop() {
+      const { name, passcode } = getFormData();
+      if (!name || !passcode) {
+        setStatus("Enter your name and passcode to release your stop.", true);
+        return;
+      }
+
+      const ownerClaim = findClaimByOwner(name, passcode);
+      if (!ownerClaim) {
+        setStatus("No claim matched that name and passcode.", true);
+        return;
+      }
+
+      const [key, value] = ownerClaim;
+      await remove(ref(db, `metro-costume-claims/${key}`));
+      setStatus(`Released ${value.stop}.`);
+    }
+
+    async function moveMyClaim() {
+      const { name, passcode, stop } = getFormData();
+      if (!name || !passcode || !stop) {
+        setStatus("Enter your name, passcode, and target stop.", true);
+        return;
+      }
+
+      const targetKey = slugify(stop);
+      const targetSnap = await get(ref(db, `metro-costume-claims/${targetKey}`));
+      if (targetSnap.exists()) {
+        setStatus(`${stop} is already taken by ${targetSnap.val().name}.`, true);
+        return;
+      }
+
+      const ownerClaim = findClaimByOwner(name, passcode);
+      if (!ownerClaim) {
+        setStatus("No existing claim matched that name and passcode.", true);
+        return;
+      }
+
+      const [oldKey] = ownerClaim;
+      await remove(ref(db, `metro-costume-claims/${oldKey}`));
+      await set(ref(db, `metro-costume-claims/${targetKey}`), {
+        stop,
+        name,
+        passcode,
+        claimedAt: Date.now(),
+        serverTime: serverTimestamp()
+      });
+
+      setStatus(`Moved your claim to ${stop}.`);
+    }
+
+    function renderStops(filterText = "") {
+      const q = filterText.trim().toLowerCase();
+      stopList.innerHTML = "";
+
+      const filteredStops = STOPS.filter(stop => stop.toLowerCase().includes(q));
+      const claimedStops = new Set(Object.values(claims).map(v => v.stop));
+
+      for (const stop of filteredStops) {
+        const claim = Object.values(claims).find(v => v.stop === stop);
+        const card = document.createElement("div");
+        card.className = "stop-card";
+
+        card.innerHTML = claim
+          ? `
+            <div class="tag claimed">Claimed</div>
+            <h4>${stop}</h4>
+            <div class="claimed-by">Claimed by <strong>${escapeHtml(claim.name)}</strong></div>
+          `
+          : `
+            <div class="tag available">Available</div>
+            <h4>${stop}</h4>
+            <div class="claimed-by">Still free for the taking</div>
+          `;
+
+        card.addEventListener("click", () => {
+          stopSelect.value = stop;
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        });
+
+        stopList.appendChild(card);
+      }
+
+      claimedCount.textContent = claimedStops.size;
+      freeCount.textContent = STOPS.length - claimedStops.size;
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    onValue(claimsRef, (snapshot) => {
+      claims = snapshot.val() || {};
+      renderStops(searchInput.value);
+    });
+
+    const savedName = localStorage.getItem("metro-costume-name");
+    const savedPasscode = localStorage.getItem("metro-costume-passcode");
+    if (savedName) nameInput.value = savedName;
+    if (savedPasscode) passcodeInput.value = savedPasscode;
+
+    claimBtn.addEventListener("click", claimSelectedStop);
+    releaseBtn.addEventListener("click", releaseMyStop);
+    changeBtn.addEventListener("click", moveMyClaim);
+    searchInput.addEventListener("input", () => renderStops(searchInput.value));
+
+    renderStops();
+  </script>
+</body>
+</html>
