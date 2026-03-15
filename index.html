@@ -1,875 +1,220 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Newcastle Metro Stop Costume Picker</title>
-  <style>
-    :root {
-      --bg: #0f172a;
-      --panel: rgba(17, 24, 39, 0.94);
-      --text: #f8fafc;
-      --muted: #cbd5e1;
-      --accent: #22c55e;
-      --accent-2: #f59e0b;
-      --danger: #ef4444;
-      --border: rgba(255,255,255,0.12);
-      --shadow: 0 16px 40px rgba(0,0,0,0.25);
-      --radius: 18px;
-    }
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 
-    * { box-sizing: border-box; }
+<title>Metro Map Coordinate Recorder</title>
 
-    body {
-      margin: 0;
-      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-      background:
-        radial-gradient(circle at top left, rgba(34,197,94,0.15), transparent 30%),
-        radial-gradient(circle at top right, rgba(245,158,11,0.12), transparent 35%),
-        var(--bg);
-      color: var(--text);
-      line-height: 1.5;
-    }
+<style>
 
-    .wrap {
-      width: min(1400px, calc(100% - 28px));
-      margin: 18px auto 40px;
-    }
+body{
+margin:0;
+font-family:system-ui,Segoe UI,Roboto;
+background:#0f172a;
+color:white;
+}
 
-    .hero {
-      background: linear-gradient(135deg, rgba(34,197,94,0.18), rgba(245,158,11,0.12));
-      border: 1px solid var(--border);
-      border-radius: 28px;
-      padding: 28px;
-      box-shadow: var(--shadow);
-      margin-bottom: 18px;
-    }
+.wrap{
+width:95%;
+max-width:1400px;
+margin:auto;
+padding:20px;
+}
 
-    h1 {
-      margin: 0 0 10px;
-      font-size: clamp(2rem, 4vw, 3.2rem);
-      line-height: 1.05;
-    }
+h1{
+margin-top:0;
+}
 
-    .subtitle {
-      margin: 0;
-      color: var(--muted);
-      font-size: 1.05rem;
-      max-width: 80ch;
-    }
+.map-shell{
+position:relative;
+border-radius:12px;
+overflow:hidden;
+background:white;
+cursor:crosshair;
+}
 
-    .notice {
-      margin-top: 16px;
-      background: rgba(255,255,255,0.08);
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 14px 16px;
-      color: #e2e8f0;
-    }
+.map-shell img{
+width:100%;
+display:block;
+pointer-events:none;
+}
 
-    .layout {
-      display: grid;
-      grid-template-columns: minmax(0, 1.35fr) minmax(320px, 420px);
-      gap: 18px;
-      align-items: start;
-    }
+.map-overlay{
+position:absolute;
+inset:0;
+}
 
-    .panel {
-      background: var(--panel);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 18px;
-      box-shadow: var(--shadow);
-    }
+.temp-point{
+position:absolute;
+width:12px;
+height:12px;
+border-radius:50%;
+background:#ef4444;
+border:2px solid white;
+transform:translate(-50%,-50%);
+pointer-events:none;
+}
 
-    .panel h2,
-    .panel h3 {
-      margin-top: 0;
-    }
+.recorder-panel{
+position:fixed;
+right:20px;
+bottom:20px;
+width:340px;
+background:#111827;
+border:1px solid rgba(255,255,255,0.15);
+border-radius:12px;
+padding:15px;
+box-shadow:0 15px 35px rgba(0,0,0,0.4);
+z-index:9999;
+}
 
-    .map-toolbar {
-      display: grid;
-      grid-template-columns: 1fr 180px;
-      gap: 10px;
-      margin-bottom: 12px;
-    }
+.recorder-panel h3{
+margin-top:0;
+}
 
-    input, select, button {
-      width: 100%;
-      border-radius: 12px;
-      border: 1px solid var(--border);
-      padding: 12px 14px;
-      font: inherit;
-    }
+input,textarea,button{
+width:100%;
+margin-top:8px;
+padding:10px;
+border-radius:8px;
+border:none;
+font-size:14px;
+}
 
-    input, select {
-      background: rgba(255,255,255,0.06);
-      color: var(--text);
-    }
+input,textarea{
+background:#1f2937;
+color:white;
+}
 
-    button {
-      cursor: pointer;
-      background: linear-gradient(135deg, var(--accent), #16a34a);
-      color: white;
-      border: none;
-      font-weight: 800;
-      transition: transform 0.12s ease, opacity 0.12s ease;
-    }
+textarea{
+height:140px;
+resize:none;
+}
 
-    button:hover { transform: translateY(-1px); }
-    button:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
+button{
+background:#22c55e;
+color:white;
+font-weight:bold;
+cursor:pointer;
+}
 
-    .secondary {
-      background: linear-gradient(135deg, #334155, #475569);
-    }
+button.secondary{
+background:#374151;
+}
 
-    .danger {
-      background: linear-gradient(135deg, #dc2626, #b91c1c);
-    }
+.recorder-buttons{
+display:grid;
+grid-template-columns:1fr 1fr;
+gap:8px;
+margin-top:8px;
+}
 
-    .map-shell {
-      position: relative;
-      overflow: hidden;
-      border-radius: 18px;
-      border: 1px solid var(--border);
-      background: #ffffff;
-      aspect-ratio: 1.42 / 1;
-      min-height: 560px;
-    }
-
-    .map-shell img {
-      position: absolute;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-      object-fit: contain;
-      user-select: none;
-      -webkit-user-drag: none;
-      pointer-events: none;
-    }
-
-    .map-overlay {
-      position: absolute;
-      inset: 0;
-    }
-
-    .station-wrap {
-      position: absolute;
-      transform: translate(-50%, -50%);
-      z-index: 2;
-    }
-
-    .station-marker {
-      min-width: 24px;
-      height: 24px;
-      border-radius: 999px;
-      border: 2px solid rgba(15, 23, 42, 0.9);
-      background: #22c55e;
-      color: #052e16;
-      font-size: 0.76rem;
-      font-weight: 900;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      padding: 0 7px;
-      cursor: pointer;
-      box-shadow: 0 6px 18px rgba(15, 23, 42, 0.18);
-      transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
-    }
-
-    .station-marker:hover,
-    .station-marker.active {
-      transform: scale(1.08);
-      box-shadow: 0 10px 22px rgba(15, 23, 42, 0.26);
-    }
-
-    .station-marker.has-claims {
-      background: #f59e0b;
-      color: #451a03;
-    }
-
-    .station-marker.search-hit {
-      outline: 3px solid rgba(59, 130, 246, 0.8);
-      z-index: 3;
-    }
-
-    .station-label {
-      position: absolute;
-      left: 50%;
-      top: -8px;
-      transform: translate(-50%, -100%);
-      background: rgba(15, 23, 42, 0.9);
-      color: #fff;
-      font-size: 0.73rem;
-      font-weight: 700;
-      line-height: 1;
-      padding: 6px 8px;
-      border-radius: 10px;
-      white-space: nowrap;
-      pointer-events: none;
-      opacity: 0;
-      transition: opacity 0.12s ease;
-    }
-
-    .station-wrap:hover .station-label,
-    .station-wrap.active .station-label,
-    .station-wrap.search-hit .station-label {
-      opacity: 1;
-    }
-
-    .map-legend {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 12px;
-      margin-top: 12px;
-      color: var(--muted);
-      font-size: 0.94rem;
-    }
-
-    .legend-chip {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .dot {
-      width: 12px;
-      height: 12px;
-      border-radius: 999px;
-      display: inline-block;
-    }
-
-    .dot.empty { background: #22c55e; }
-    .dot.taken { background: #f59e0b; }
-
-    .sidebar-stack {
-      display: grid;
-      gap: 18px;
-      position: sticky;
-      top: 18px;
-    }
-
-    label {
-      display: block;
-      font-weight: 700;
-      margin-bottom: 6px;
-    }
-
-    .form-grid {
-      display: grid;
-      gap: 10px;
-    }
-
-    .button-grid {
-      display: grid;
-      gap: 10px;
-      margin-top: 12px;
-    }
-
-    .status {
-      margin-top: 12px;
-      min-height: 24px;
-      font-size: 0.96rem;
-      color: #dbeafe;
-    }
-
-    .stats {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 10px;
-      margin-top: 12px;
-    }
-
-    .stat {
-      background: rgba(255,255,255,0.06);
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 12px;
-      text-align: center;
-    }
-
-    .stat strong {
-      display: block;
-      font-size: 1.4rem;
-    }
-
-    .detail-card {
-      min-height: 280px;
-    }
-
-    .detail-heading {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      margin-bottom: 12px;
-    }
-
-    .detail-count {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      min-width: 34px;
-      height: 34px;
-      padding: 0 12px;
-      border-radius: 999px;
-      background: rgba(245,158,11,0.18);
-      color: #fcd34d;
-      font-weight: 800;
-      border: 1px solid rgba(245,158,11,0.35);
-    }
-
-    .costume-list {
-      display: grid;
-      gap: 10px;
-    }
-
-    .costume-item {
-      background: rgba(255,255,255,0.05);
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 12px;
-    }
-
-    .costume-item strong {
-      display: block;
-      margin-bottom: 4px;
-    }
-
-    .muted {
-      color: var(--muted);
-    }
-
-    .quick-list {
-      display: grid;
-      gap: 8px;
-      max-height: 300px;
-      overflow: auto;
-      padding-right: 2px;
-    }
-
-    .quick-stop {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      width: 100%;
-      text-align: left;
-      background: rgba(255,255,255,0.04);
-      border: 1px solid var(--border);
-      color: var(--text);
-      padding: 10px 12px;
-      border-radius: 12px;
-    }
-
-    .quick-stop:hover,
-    .quick-stop.active {
-      background: rgba(255,255,255,0.08);
-    }
-
-    .quick-stop-count {
-      min-width: 28px;
-      height: 28px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      border-radius: 999px;
-      background: rgba(255,255,255,0.1);
-      font-weight: 800;
-    }
-
-    .footer-note {
-      margin-top: 14px;
-      color: var(--muted);
-      font-size: 0.92rem;
-    }
-
-    @media (max-width: 1100px) {
-      .layout {
-        grid-template-columns: 1fr;
-      }
-
-      .sidebar-stack {
-        position: static;
-      }
-    }
-
-    @media (max-width: 700px) {
-      .map-toolbar,
-      .stats {
-        grid-template-columns: 1fr;
-      }
-
-      .map-shell {
-        min-height: 440px;
-      }
-
-      .station-label {
-        display: none;
-      }
-    }
-  </style>
+</style>
 </head>
+
 <body>
-  <div class="wrap">
-    <section class="hero">
-      <h1>Dress as a Newcastle Metro Stop</h1>
-      <p class="subtitle">
-        Click a stop on the map to see who is dressing for it. Every stop shows how many costume ideas have been claimed, even before you click.
-      </p>
-      <div class="notice">
-        Multiple people can choose the same stop, but everyone has to add their costume idea so the group can avoid duplicates.
-      </div>
-    </section>
 
-    <div class="layout">
-      <section class="panel">
-        <h2>Interactive Metro map</h2>
-        <div class="map-toolbar">
-          <input id="searchInput" type="text" placeholder="Search a stop and highlight it on the map" />
-          <select id="stopSelect"></select>
-        </div>
+<div class="wrap">
 
-        <div class="map-shell">
-          <img src="https://www.nexus.org.uk/themes/custom/nexus/images/metro-map-large.jpg" alt="Tyne and Wear Metro map" loading="lazy" />
-          <div id="mapOverlay" class="map-overlay"></div>
-        </div>
+<h1>Metro Stop Coordinate Recorder</h1>
 
-        <div class="map-legend">
-          <span class="legend-chip"><i class="dot empty"></i> no costumes yet</span>
-          <span class="legend-chip"><i class="dot taken"></i> one or more costumes claimed</span>
-        </div>
+<p>
+Enter a station name then click the map to record its coordinates.
+</p>
 
-        <p class="footer-note">
-          Tip: the number on each stop shows how many people have claimed that stop. Click any stop to open its costume list.
-        </p>
-      </section>
+<div class="map-shell">
 
-      <aside class="sidebar-stack">
-        <section class="panel">
-          <h2>Add your costume</h2>
+<img src="https://www.nexus.org.uk/themes/custom/nexus/images/metro-map-large.jpg">
 
-          <div class="form-grid">
-            <div>
-              <label for="nameInput">Your name</label>
-              <input id="nameInput" type="text" maxlength="40" placeholder="e.g. Sam" />
-            </div>
-            <div>
-              <label for="costumeInput">Your costume idea</label>
-              <input id="costumeInput" type="text" maxlength="80" placeholder="e.g. tunnel, ticket machine, giant yellow M" />
-            </div>
-            <div>
-              <label for="passcodeInput">Passcode</label>
-              <input id="passcodeInput" type="password" maxlength="40" placeholder="Used to edit or remove your entry later" />
-            </div>
-          </div>
+<div id="mapOverlay" class="map-overlay"></div>
 
-          <div class="button-grid">
-            <button id="claimBtn">Add my costume</button>
-            <button id="changeBtn" class="secondary">Move my costume to selected stop</button>
-            <button id="releaseBtn" class="danger">Remove my entry</button>
-          </div>
+</div>
 
-          <div id="status" class="status"></div>
+</div>
 
-          <div class="stats">
-            <div class="stat">
-              <strong id="claimedCount">0</strong>
-              costumes added
-            </div>
-            <div class="stat">
-              <strong id="busyCount">0</strong>
-              stops with claims
-            </div>
-            <div class="stat">
-              <strong id="totalCount">0</strong>
-              total stops
-            </div>
-          </div>
-        </section>
 
-        <section class="panel detail-card">
-          <div class="detail-heading">
-            <div>
-              <h3 id="detailTitle" style="margin: 0;">Pick a stop</h3>
-              <div id="detailSubtitle" class="muted">Click a station on the map to see who is dressing for it.</div>
-            </div>
-            <div id="detailCount" class="detail-count">0</div>
-          </div>
+<div class="recorder-panel">
 
-          <div id="costumeList" class="costume-list">
-            <div class="muted">No stop selected yet.</div>
-          </div>
-        </section>
+<h3>Coordinate Recorder</h3>
 
-        <section class="panel">
-          <h3>Quick stop list</h3>
-          <div id="quickList" class="quick-list"></div>
-        </section>
-      </aside>
-    </div>
-  </div>
+<input id="stationName" placeholder="Station name">
 
-  <script>
-    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyX28NJ0ocdBR2xbvSSwHPsYEUlUK5x_ruzUP8hTIjf0Q3Lulz443Lz4DVgeuQI7uZQag/exec";
+<textarea id="output" placeholder="Recorded coordinates will appear here"></textarea>
 
-    const STATION_META = [
-      { name: "Airport", x: 8.84, y: 27.34 },
-      { name: "Callerton Parkway", x: 11.88, y: 27.03 },
-      { name: "Bank Foot", x: 15.13, y: 27.03 },
-      { name: "Kingston Park", x: 18.38, y: 27.19 },
-      { name: "Fawdon", x: 21.52, y: 27.19 },
-      { name: "Wansbeck Road", x: 24.88, y: 27.03 },
-      { name: "Regent Centre", x: 28.13, y: 27.34 },
-      { name: "South Gosforth", x: 30.73, y: 29.65 },
-      { name: "Ilford Road", x: 31.82, y: 31.81 },
-      { name: "West Jesmond", x: 32.9, y: 34.73 },
-      { name: "Jesmond", x: 33.88, y: 37.32 },
-      { name: "St James", x: 33.55, y: 43.02 },
-      { name: "Haymarket", x: 34.96, y: 39.94 },
-      { name: "Longbenton", x: 36.15, y: 26.88 },
-      { name: "Monument", x: 36.26, y: 42.86 },
-      { name: "Central Station", x: 37.56, y: 46.25 },
-      { name: "Four Lane Ends", x: 42.65, y: 26.88 },
-      { name: "Gateshead", x: 42.54, y: 52.26 },
-      { name: "Manors", x: 44.82, y: 43.05 },
-      { name: "Gateshead Stadium", x: 47.53, y: 52.41 },
-      { name: "Benton", x: 49.15, y: 26.88 },
-      { name: "Byker", x: 49.37, y: 43.2 },
-      { name: "Felling", x: 51.97, y: 52.1 },
-      { name: "Chillingham Road", x: 53.92, y: 43.2 },
-      { name: "Palmersville", x: 55.7, y: 15.46 },
-      { name: "Heworth", x: 56.96, y: 52.1 },
-      { name: "Walkergate", x: 58.26, y: 43.05 },
-      { name: "Pelaw", x: 61.73, y: 52.1 },
-      { name: "Northumberland Park", x: 62.05, y: 26.88 },
-      { name: "Wallsend", x: 62.92, y: 43.2 },
-      { name: "Hebburn", x: 65.63, y: 51.64 },
-      { name: "Fellgate", x: 66.78, y: 61.46 },
-      { name: "Hadrian Road", x: 67.36, y: 43.2 },
-      { name: "Shiremoor", x: 68.66, y: 26.72 },
-      { name: "South Hylton", x: 68.66, y: 73.54 },
-      { name: "Jarrow", x: 69.31, y: 52.1 },
-      { name: "Howdon", x: 71.8, y: 43.05 },
-      { name: "Bede", x: 72.26, y: 52.4 },
-      { name: "Brockley Whins", x: 73.03, y: 61.69 },
-      { name: "Pallion", x: 73, y: 73.38 },
-      { name: "West Monkseaton", x: 75.16, y: 26.88 },
-      { name: "Simonside", x: 75.6, y: 51.82 },
-      { name: "Percy Main", x: 76.46, y: 43.05 },
-      { name: "Millfield", x: 77.11, y: 73.38 },
-      { name: "East Boldon", x: 78.4, y: 61.46 },
-      { name: "Tyne Dock", x: 78.96, y: 51.98 },
-      { name: "Meadow Well", x: 80.91, y: 43.05 },
-      { name: "Monkseaton", x: 81.45, y: 26.72 },
-      { name: "University", x: 81.56, y: 73.69 },
-      { name: "Chichester", x: 82.21, y: 51.98 },
-      { name: "North Shields", x: 85.46, y: 42.89 },
-      { name: "South Shields", x: 85.53, y: 52.63 },
-      { name: "Park Lane", x: 85.57, y: 73.54 },
-      { name: "Whitley Bay", x: 86.97, y: 29.96 },
-      { name: "Cullercoats", x: 87.08, y: 35.19 },
-      { name: "Tynemouth", x: 87.08, y: 39.81 },
-      { name: "Sunderland", x: 87.08, y: 70.46 },
-      { name: "St Peter's", x: 87.06, y: 72.15 },
-      { name: "Stadium of Light", x: 87.06, y: 67.97 },
-      { name: "Seaburn", x: 87.06, y: 64.71 }
-    ];
+<div class="recorder-buttons">
+<button id="copyBtn">Copy Output</button>
+<button id="clearBtn" class="secondary">Clear</button>
+</div>
 
-    const STOPS = [...new Set(STATION_META.map(stop => stop.name))].sort((a, b) => a.localeCompare(b));
+</div>
 
-    const nameInput = document.getElementById("nameInput");
-    const costumeInput = document.getElementById("costumeInput");
-    const passcodeInput = document.getElementById("passcodeInput");
-    const stopSelect = document.getElementById("stopSelect");
-    const searchInput = document.getElementById("searchInput");
-    const claimBtn = document.getElementById("claimBtn");
-    const releaseBtn = document.getElementById("releaseBtn");
-    const changeBtn = document.getElementById("changeBtn");
-    const statusEl = document.getElementById("status");
-    const mapOverlay = document.getElementById("mapOverlay");
-    const quickList = document.getElementById("quickList");
-    const claimedCount = document.getElementById("claimedCount");
-    const busyCount = document.getElementById("busyCount");
-    const totalCount = document.getElementById("totalCount");
-    const detailTitle = document.getElementById("detailTitle");
-    const detailSubtitle = document.getElementById("detailSubtitle");
-    const detailCount = document.getElementById("detailCount");
-    const costumeList = document.getElementById("costumeList");
+<script>
 
-    let claims = [];
-    let activeStop = null;
+const mapOverlay = document.getElementById("mapOverlay")
+const stationNameInput = document.getElementById("stationName")
+const outputBox = document.getElementById("output")
 
-    totalCount.textContent = STOPS.length;
+mapOverlay.addEventListener("click",function(e){
 
-    STOPS.forEach(stop => {
-      const option = document.createElement("option");
-      option.value = stop;
-      option.textContent = stop;
-      stopSelect.appendChild(option);
-    });
+const name = stationNameInput.value.trim()
 
-    function setStatus(message, isError = false) {
-      statusEl.textContent = message;
-      statusEl.style.color = isError ? "#fecaca" : "#dbeafe";
-    }
+if(!name) return
 
-    function getFormData() {
-      return {
-        name: nameInput.value.trim(),
-        costume: costumeInput.value.trim(),
-        passcode: passcodeInput.value.trim(),
-        stop: stopSelect.value
-      };
-    }
+const rect = mapOverlay.getBoundingClientRect()
 
-    function escapeHtml(value) {
-      return String(value)
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;")
-        .replaceAll("'", "&#039;");
-    }
+const x = ((e.clientX-rect.left)/rect.width)*100
+const y = ((e.clientY-rect.top)/rect.height)*100
 
-    function getClaimsForStop(stop) {
-      return claims.filter(claim => claim.stop === stop);
-    }
+const xr = Number(x.toFixed(2))
+const yr = Number(y.toFixed(2))
 
-    function renderDetail(stop) {
-      activeStop = stop;
-      const stopClaims = stop ? getClaimsForStop(stop) : [];
+const line = `{ name: "${name}", x: ${xr}, y: ${yr} },`
 
-      if (!stop) {
-        detailTitle.textContent = "Pick a stop";
-        detailSubtitle.textContent = "Click a station on the map to see who is dressing for it.";
-        detailCount.textContent = "0";
-        costumeList.innerHTML = '<div class="muted">No stop selected yet.</div>';
-      } else {
-        detailTitle.textContent = stop;
-        detailSubtitle.textContent = stopClaims.length
-          ? `${stopClaims.length} costume idea${stopClaims.length === 1 ? "" : "s"} planned for this stop.`
-          : "Nobody has picked this stop yet.";
-        detailCount.textContent = String(stopClaims.length);
-        costumeList.innerHTML = stopClaims.length
-          ? stopClaims.map(claim => `
-              <div class="costume-item">
-                <strong>${escapeHtml(claim.name)}</strong>
-                <div>${escapeHtml(claim.costume || "No costume added")}</div>
-              </div>
-            `).join("")
-          : '<div class="muted">No costumes added for this stop yet.</div>';
-      }
+console.log(line)
 
-      document.querySelectorAll(".station-wrap").forEach(el => {
-        el.classList.toggle("active", el.dataset.stop === stop);
-        const btn = el.querySelector(".station-marker");
-        if (btn) btn.classList.toggle("active", el.dataset.stop === stop);
-      });
+if(outputBox.value)
+outputBox.value += "\n"
 
-      document.querySelectorAll(".quick-stop").forEach(el => {
-        el.classList.toggle("active", el.dataset.stop === stop);
-      });
+outputBox.value += line
 
-      if (stop) {
-        stopSelect.value = stop;
-      }
-    }
+const point = document.createElement("div")
 
-    function renderMap() {
-      mapOverlay.innerHTML = "";
-      const q = searchInput.value.trim().toLowerCase();
+point.className="temp-point"
+point.style.left = xr+"%"
+point.style.top = yr+"%"
 
-      STATION_META.forEach(meta => {
-        const count = getClaimsForStop(meta.name).length;
-        const wrap = document.createElement("div");
-        wrap.className = "station-wrap";
-        wrap.dataset.stop = meta.name;
-        if (q && meta.name.toLowerCase().includes(q)) wrap.classList.add("search-hit");
-        if (activeStop === meta.name) wrap.classList.add("active");
-        wrap.style.left = `${meta.x}%`;
-        wrap.style.top = `${meta.y}%`;
+mapOverlay.appendChild(point)
 
-        const label = document.createElement("div");
-        label.className = "station-label";
-        label.textContent = meta.name;
+})
 
-        const button = document.createElement("button");
-        button.type = "button";
-        button.className = `station-marker ${count ? "has-claims" : ""} ${q && meta.name.toLowerCase().includes(q) ? "search-hit" : ""}`;
-        button.textContent = String(count);
-        button.setAttribute("aria-label", `${meta.name}: ${count} costume claims`);
-        button.title = `${meta.name} (${count})`;
-        button.addEventListener("click", (e) => {
-          e.stopPropagation();
-          renderDetail(meta.name);
-        });
+document.getElementById("copyBtn").onclick=function(){
 
-        wrap.appendChild(label);
-        wrap.appendChild(button);
-        mapOverlay.appendChild(wrap);
-      });
-    }
+navigator.clipboard.writeText(outputBox.value)
 
-    function renderQuickList() {
-      const q = searchInput.value.trim().toLowerCase();
-      const filteredStops = STOPS.filter(stop => stop.toLowerCase().includes(q));
-      quickList.innerHTML = filteredStops.map(stop => {
-        const count = getClaimsForStop(stop).length;
-        return `
-          <button type="button" class="quick-stop ${activeStop === stop ? "active" : ""}" data-stop="${escapeHtml(stop)}">
-            <span>${escapeHtml(stop)}</span>
-            <span class="quick-stop-count">${count}</span>
-          </button>
-        `;
-      }).join("");
+}
 
-      quickList.querySelectorAll(".quick-stop").forEach(btn => {
-        btn.addEventListener("click", () => renderDetail(btn.dataset.stop));
-      });
-    }
+document.getElementById("clearBtn").onclick=function(){
 
-    function renderStats() {
-      const stopsWithClaims = new Set(claims.map(c => c.stop));
-      claimedCount.textContent = claims.length;
-      busyCount.textContent = stopsWithClaims.size;
-      totalCount.textContent = STOPS.length;
-    }
+outputBox.value=""
+document.querySelectorAll(".temp-point").forEach(p=>p.remove())
 
-    function rerenderAll() {
-      renderMap();
-      renderQuickList();
-      renderStats();
-      renderDetail(activeStop);
-    }
+}
 
-    async function apiGetClaims() {
-      const response = await fetch(`${APPS_SCRIPT_URL}?action=getClaims`);
-      return await response.json();
-    }
+document.addEventListener("keydown",function(e){
 
-    async function apiPost(data) {
-      const response = await fetch(APPS_SCRIPT_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "text/plain;charset=utf-8"
-        },
-        body: JSON.stringify(data)
-      });
-      return await response.json();
-    }
+if(e.key==="n"){
 
-    async function loadClaims() {
-      try {
-        const result = await apiGetClaims();
-        if (!result.ok) {
-          setStatus(result.error || "Could not load claims.", true);
-          return;
-        }
-        claims = result.claims || [];
-        rerenderAll();
-      } catch (err) {
-        console.error(err);
-        setStatus("Could not connect to the claims sheet.", true);
-      }
-    }
+const name = prompt("Station name")
 
-    async function claimSelectedStop() {
-      const { name, costume, passcode, stop } = getFormData();
+if(name)
+stationNameInput.value=name
 
-      if (!name || !costume || !passcode || !stop) {
-        setStatus("Enter your name, costume idea, passcode, and pick a stop.", true);
-        return;
-      }
+}
 
-      try {
-        const result = await apiPost({ action: "claimStop", name, costume, passcode, stop });
-        if (!result.ok) {
-          setStatus(result.error || "Could not add costume.", true);
-          return;
-        }
+})
 
-        localStorage.setItem("metro-costume-name", name);
-        localStorage.setItem("metro-costume-passcode", passcode);
-        localStorage.setItem("metro-costume-idea", costume);
-        setStatus(result.message || `${stop} added successfully.`);
-        activeStop = stop;
-        await loadClaims();
-      } catch (err) {
-        console.error(err);
-        setStatus("Something went wrong while adding the costume.", true);
-      }
-    }
+</script>
 
-    async function releaseMyStop() {
-      const { name, passcode } = getFormData();
-
-      if (!name || !passcode) {
-        setStatus("Enter your name and passcode to remove your entry.", true);
-        return;
-      }
-
-      try {
-        const result = await apiPost({ action: "releaseStop", name, passcode });
-        if (!result.ok) {
-          setStatus(result.error || "Could not remove entry.", true);
-          return;
-        }
-
-        setStatus(result.message || "Entry removed.");
-        await loadClaims();
-      } catch (err) {
-        console.error(err);
-        setStatus("Something went wrong while removing the entry.", true);
-      }
-    }
-
-    async function moveMyClaim() {
-      const { name, costume, passcode, stop } = getFormData();
-
-      if (!name || !costume || !passcode || !stop) {
-        setStatus("Enter your name, costume idea, passcode, and new stop.", true);
-        return;
-      }
-
-      try {
-        const result = await apiPost({ action: "moveClaim", name, costume, passcode, stop });
-        if (!result.ok) {
-          setStatus(result.error || "Could not move entry.", true);
-          return;
-        }
-
-        localStorage.setItem("metro-costume-name", name);
-        localStorage.setItem("metro-costume-passcode", passcode);
-        localStorage.setItem("metro-costume-idea", costume);
-        setStatus(result.message || `Moved entry to ${stop}.`);
-        activeStop = stop;
-        await loadClaims();
-      } catch (err) {
-        console.error(err);
-        setStatus("Something went wrong while moving the entry.", true);
-      }
-    }
-
-    const savedName = localStorage.getItem("metro-costume-name");
-    const savedPasscode = localStorage.getItem("metro-costume-passcode");
-    const savedCostume = localStorage.getItem("metro-costume-idea");
-    if (savedName) nameInput.value = savedName;
-    if (savedPasscode) passcodeInput.value = savedPasscode;
-    if (savedCostume) costumeInput.value = savedCostume;
-
-    claimBtn.addEventListener("click", claimSelectedStop);
-    releaseBtn.addEventListener("click", releaseMyStop);
-    changeBtn.addEventListener("click", moveMyClaim);
-    searchInput.addEventListener("input", () => {
-      renderMap();
-      renderQuickList();
-    });
-    stopSelect.addEventListener("change", () => renderDetail(stopSelect.value));
-
-    renderDetail(null);
-    loadClaims();
-    setInterval(loadClaims, 10000);
-  </script>
 </body>
 </html>
